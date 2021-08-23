@@ -1,0 +1,58 @@
+---
+- name: check for packege if already installed
+  shell: rpm -qa | grep cloudendure
+  register: package
+  ignore_errors: true
+
+- name: download the agent 
+  get_url:
+    url: https://console.cloudendure.com/installer_linux.py
+    dest: "{{stage_files_loc}}/installer_linux.py"
+    validate_certs: no
+    mode: 0750
+  delegate_to: localhost
+  when: "'cloudendure' not in package.stdout"
+
+- name: copy files to remote server
+  copy:
+    src: "{{stage_files_loc}}/installer_linux.py"
+    dest: /tmp
+    mode: 0750
+  when: "'cloudendure' not in package.stdout"
+
+- name: install additional yum packages for rhel 8
+  yum:
+    name:
+      - elfutils-libelf-devel
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int >= 8
+  become: true
+  become_method: dzdo
+  become_user: root
+  when: "'cloudendure' not in package.stdout"
+
+- name: user add cloudendure
+  shell: /usr/sbin/useradd -u 678 -d /var/lib/cloudendure cloudendure
+  become: true
+  become_method: dzdo
+  become_user: root
+  ignore_errors: true
+  when: "'cloudendure' not in package.stdout"
+
+- name: invoke the installer for linux 
+  shell: python ./installer_linux.py -t {{key}} --no-prompt
+  args:
+    chdir: /tmp
+  become: true
+  become_method: dzdo
+  become_user: root
+  when: "'cloudendure' not in package.stdout"
+
+- pause:
+    seconds: 10
+
+- name: Remove file finally
+  file:
+    path: /tmp/installer_linux.py
+    state: absent
+  when: "'cloudendure' not in package.stdout"
+

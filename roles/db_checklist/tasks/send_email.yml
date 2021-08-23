@@ -1,0 +1,12 @@
+---
+- name: send mail for if validations are failed
+  mail:
+    host: localhost
+    from: "{{from_iac_email}}"
+    to: "{{to_dbteam_email}}"
+    cc: "{{from_iac_email}}"
+    subject: "*************Ansible - Checklist Validations Oracle - FAIL- {{hostname}}*************"
+    body: "Hostname:{{hostname}}\nDB_NAME:{{DB_NAME}}\nBUILD_URL:{{BUILD_URL}}\nBUILD_NUMBER:{{BUILD_NUMBER}}\nFailed Validations are - {{ db_validations | json_query(jq) }}\nOther_Failures:{{other_failures}}"
+  vars:
+    jq: "[?check_result == `false`].{result: fail_msg}"
+  # delegate_to: localhost

@@ -1,0 +1,40 @@
+# ### you may need to add lines if there is one or more databases on the server
+# ### use this command to put in the correct DB_SID
+# :%s/{{ ORACLE_SID }}/dbname/g
+
+# ### HOT BACKUP USING obackup.pl
+#00 17 * * * /app/oracle/admin/maint/obackup.pl -c {{ ORACLE_SID }} HOT >> /oraback/{{ ORACLE_SID }}.backup.log 2>&1
+
+# ### ARCHIVE LOG MAINTENANCE – ONLY databases NOT Backed up by CommVault  Data Guard databases need this also
+#00 23 * * * find /oraback/archive/*/*.arc -mtime +2 -exec gzip -1 {} \; > /oraback/compress_arc.log 2>&1
+#00 14 * * * find  /oraback/archive/*/*.arc*  -daystart -mtime +8 -exec rm {} \; > /oraback/remove_arc.log 2>&1
+
+# ### FILE CLEAN UP
+00 03 * * 3 find  /app/oracle/diag/rdbms/*/*/trace/alert* -daystart -mtime +370 -exec rm {} \; > /oraback/delete_alert.log 2>&1
+00 03 * * 3 find  /app/oracle/diag/rdbms/*/*/trace/*tr* -daystart -mtime +8 -exec rm {} \; > /oraback/delete_trc.log 2>&1
+00 03 * * 3 find  /app/oracle/diag/rdbms/*/*/alert/log* -daystart -mtime +8 -exec rm {} \; > /oraback/delete_alertxml.log 2>&1
+10 03 * * 3 find  /app/oracle/admin/*/cdump/* -daystart -mtime +8 -exec rm -R {} \; > /oraback/delete_core.log 2>&1
+15 03 * * * find  /app/oracle/admin/*/adump/*.aud -daystart  -mtime +8 -exec rm {} \;  >> /oraback/delete_audit.log 2>&1
+00 03 * * 0 find /app/oracle/diag/tnslsnr/*/listener/alert/log_*.xml -daystart -mtime +6 -exec rm {} \; > /oraback/delete_listener.log 2>&1
+00 03 * * 0 > /app/oracle/diag/tnslsnr/*/listener/trace/listener.log
+00 03 * * 0 > /app/oracle/diag/clients/*/*/trace/sqlnet.log
+
+# Export Cleanup
+#00 18 * * * find  /oraback/export/*/*.dmp  -daystart -mtime +375 -exec rm {} \;
+
+### check if move alert log works
+00 03 * 1,4,7,10 *  /app/oracle/admin/maint/mvlog.sh {{ ORACLE_SID }}
+
+#################New DB scripts #############
+00 03 * * * find /app/oracle/diag/rdbms/*/*/trace/*trc  -mtime +6 -exec rm {} \; > /oraback/delete_trc.log 2>&1
+00 03 * * * find /app/oracle/diag/rdbms/*/*/trace/*.trm  -mtime +6 -exec rm {} \; > /oraback/delete_trm.log 2>&1
+00 03 * * * find /app/oracle/admin/*/adump/*.aud  -mtime +30 -exec rm {} \; > /oraback/delete_aud.log 2>&1
+#00 07,19 * * * /app/oracle/admin/maint/rman_archive_del.sh {{ ORACLE_SID }}
+00 03 * * * find /app/oracle/diag/tnslsnr/*/listener/alert/log*.xml -mtime +7 -exec rm {} \; > /oraback/delete_listener.log 2>&1
+00 03 * * 3 find  /oraback/export/*/*log  -mtime +6 -exec rm {} \; > /oraback/delete_log.log 2>&1
+00 03 * * 3 find  /oraback/export/*/*dmp -mtime +6 -exec rm {} \; > /oraback/delete_dmplog.log 2>&1
+
+
+### Monthly Audit
+10 01 1 * *  /app/oracle/admin/audit/Monthly_Audit_Report.sh {{ ORACLE_SID }}  >  /oraback/audit_{{ ORACLE_SID }}.log
+10 10 2 * * find  /app/oracle/admin/audit/*/*.rpt -daystart -mtime +75 -exec rm -R {} \; > /oraback/delete_monthly_audit.log 2>&1

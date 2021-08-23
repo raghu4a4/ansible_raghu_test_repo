@@ -1,0 +1,73 @@
+---
+- set_fact: 
+    tmp_path: /tmp/db_setup_install
+    oracle_dir: "/app/oracle/product/{{ORACLE_VER}}/db"
+
+- set_fact:
+    run_Installer: "/net/{{storage_server}}/vol/bos1_nas_library/orastage/linux64/database/{{ORACLE_VER}}/database/runInstaller"
+    install_params: "-silent -ignoreSysPrereqs -ignorePrereq -nowait -waitforcompletion -showProgress -responseFile"
+
+- set_fact:
+    run_Installer: "{{oracle_dir}}/runInstaller"
+    install_params: "-silent -nowait -waitforcompletion -noconfig -noconsole -responseFile"
+  when: ORACLE_VER == "19.0.0" or ORACLE_VER == "18.0.0"
+
+- name: Create temp directory to store all execution data
+  file: 
+    path: "{{tmp_path}}"
+    state: directory
+    recurse: yes
+    owner: oracle
+    group: dba
+    mode: ug+rwx,o+rx,g+s
+
+- name: when oracle version is 18 or 19 
+  include: install_18-19.yml
+  when: ORACLE_VER == "19.0.0" or ORACLE_VER == "18.0.0"
+
+- name: change cvu_config file for 19 version
+  template:
+     src: cvu_config
+     dest: "{{oracle_dir}}/cv/admin/cvu_config"
+     backup: yes  
+  when: ORACLE_VER == "19.0.0"
+
+- name: copy template for oracle version {{ORACLE_VER}}
+  template:
+     src: "{{response_file}}"
+     dest: "{{tmp_path}}"
+     backup: yes
+     mode: 0644
+     owner: oracle
+     group: dba
+
+- name: copy run script to /tmp
+  template:
+    src: run.sh
+    dest: "{{tmp_path}}/run_{{ORACLE_VER}}.sh"
+    mode: 0755
+    owner: oracle
+    group: dba
+    backup: yes
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int >= 7
+
+- name: copy run script to /tmp
+  template:
+    src: run_v6.sh
+    dest: "{{tmp_path}}/run_{{ORACLE_VER}}.sh"
+    mode: 0755
+    owner: oracle
+    group: dba
+    backup: yes
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int <= 6
+
+- name: run the script to install
+  command: "sh {{tmp_path}}/run_{{ORACLE_VER}}.sh"
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int >= 7
+
+- name: run the script to install
+  command: "sh {{tmp_path}}/run_{{ORACLE_VER}}.sh"
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int <= 6
+
+- name: run root.sh inside /app/oracle/product
+  command: "/app/oracle/product/{{ORACLE_VER}}/db/root.sh -silent -bindir /usr/local/bin -stdout"

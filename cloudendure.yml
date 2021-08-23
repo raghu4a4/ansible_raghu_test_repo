@@ -1,0 +1,36 @@
+---
+- name: Evaluate windows or linux server and add to empty group
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: add to host group
+      add_host:
+        hostname: "{{hostname}}"
+        group: cloudendure
+        ansible_user: iacservice
+        ansible_connection: ssh
+        ansible_ssh_pass: "{{ iacservice_ssh_pass }}"
+      when: hostname[-3] == "l"
+      no_log: true
+
+    - add_host:
+        hostname: "{{hostname}}"
+        group: cloudendure
+        ansible_user: iacservice
+        ansible_ssh_pass: "{{ iacservice_ssh_pass }}"
+        ansible_connection: winrm
+        ansible_port: 5985
+        ansible_winrm_transport: kerberos
+        ansible_server_cert_validation: ignore
+        ansible_winrm_kerberos_delegation: true
+      when: hostname[-3] == "w"
+      tags: always
+      no_log: true
+
+##################################################################################################
+
+- name: run cloudendure role on servers 
+  hosts: cloudendure
+  roles:
+    - cloud_endure
+

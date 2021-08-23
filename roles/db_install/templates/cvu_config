@@ -1,0 +1,47 @@
+# Configuration file for Cluster Verification Utility(CVU)
+# Version: 011405
+#
+# NOTE:
+# 1._ Any line without a '=' will be ignored
+# 2._ Since the fallback option will look into the environment variables,
+#     please have a component prefix(CV_) for each property to define a
+#     namespace.
+# 
+
+
+#Nodes for the cluster. If CRS home is not installed, this list will be 
+#picked up when -n all is mentioned in the commandline argument.
+#CV_NODE_ALL=
+
+#if enabled, cvuqdisk rpm is required on all nodes
+CV_RAW_CHECK_ENABLED=TRUE
+
+# Fallback to this distribution id
+CV_ASSUME_DISTID=OEL8
+
+#Complete file system path of sudo binary file, default is /usr/local/bin/sudo
+CV_SUDO_BINARY_LOCATION=/usr/local/bin/sudo
+
+#Complete file system path of pbrun binary file, default is /usr/local/bin/pbrun
+CV_PBRUN_BINARY_LOCATION=/usr/local/bin/pbrun
+
+# Whether X-Windows check should be performed for user equivalence with SSH
+#CV_XCHK_FOR_SSH_ENABLED=TRUE
+
+# To override SSH location
+#ORACLE_SRVM_REMOTESHELL=/usr/bin/ssh
+
+# To override SCP location
+#ORACLE_SRVM_REMOTECOPY=/usr/bin/scp
+
+# To override version used by command line parser
+CV_ASSUME_CL_VERSION=19.1.0.0.0
+
+# Location of the browser to be used to display HTML report
+#CV_DEFAULT_BROWSER_LOCATION=/usr/bin/mozilla
+
+# Maximum number of retries for discover DHCP server
+#CV_MAX_RETRIES_DHCP_DISCOVERY=5
+
+# Maximum CVU trace files size (in multiples of 100 MB)
+#CV_TRACE_SIZE_MULTIPLIER=1

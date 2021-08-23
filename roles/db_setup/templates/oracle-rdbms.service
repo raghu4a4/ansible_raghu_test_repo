@@ -1,0 +1,19 @@
+# /etc/systemd/system/oracle-rdbms.service
+#   Invoking Oracle scripts to start/shutdown Instances defined in /etc/oratab
+#   and starts Listener
+
+[Unit]
+Description=Oracle Database(s) and Listener
+After=centrifydc.service
+
+[Service]
+Type=forking
+Restart=no
+ExecStart=/app/oracle/admin/maint/dbora start
+ExecStop=/app/oracle/admin/maint/dbora stop
+User=oracle
+LimitMEMLOCK=infinity
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

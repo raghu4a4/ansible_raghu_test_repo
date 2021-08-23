@@ -1,0 +1,44 @@
+---
+- name: sql script run
+  shell: "{{exec_select}} -l oracle -c 'export ORACLE_SID={{ORACLE_SID}} && export ORACLE_HOME={{only_home.stdout}} && sqlplus / as sysdba @{{ tmp_path }}/checklist.sql'"
+  register: sql
+  ignore_errors: true
+
+- set_fact:
+    other_failures: "{{ORACLE_SID}} doesn't exist please check and rerun"
+  when: sql is failed
+
+#- name: trigger email when failure
+#  include: send_email.yml
+#  when: sql is failed
+
+- fail:
+    msg: "{{ORACLE_SID}} doesn't exist"
+  when: sql is failed
+
+- name: listener status
+  shell: "{{exec_select}} -l oracle -c 'source /home/oracle/.profile && lsnrctl status'"
+  register: listener
+
+- name: OEM status
+  shell: "{{exec_select}} -l oracle -c '/app/oracle/product/agent13c/agent_inst/bin/emctl status agent'"
+  register: oem
+
+- name: OEM target monitored
+  shell: "{{exec_select}} -l oracle -c '/app/oracle/product/agent13c/agent_inst/bin/emctl config agent listtargets'"
+  register: oem_target
+
+- set_fact:
+    start_time: "{{ listener.stdout | regex_search(regexp) }}"
+  vars:
+    regexp: 'Start Date.*'
+
+- set_fact:
+    version: "{{ listener.stdout | regex_search(regexp) }}"
+  vars:
+    regexp: 'Version.*'
+
+- set_fact:
+    service: "{{ listener.stdout | regex_findall(regexp) | join('\n') }}"
+  vars:
+    regexp: 'Service .*'

@@ -1,0 +1,120 @@
+---
+- name: check the hostname
+  command: hostname
+  register: host_name
+- debug: var=host_name.stdout
+
+- name: check oracle user right group
+  command: id oracle
+  register: id
+- debug: var=id.stdout
+
+- name: copy the .profile for oracle user
+  template:
+    src: "NEWDB.profile"
+    dest: /home/oracle/.profile
+    # remote_src: true
+    owner: oracle
+    group: dba
+    mode: '0644'
+    backup: yes
+
+- name: copy the .bash_profile for oracle user
+  template:
+    src: "NEWDB.bash_profile"
+    dest: /home/oracle/.bash_profile
+    owner: oracle
+    group: dba
+    mode: '0644'
+    backup: yes
+
+- name: create a folder if it doesn't exists in /app/oracle/admin/maint
+  file:
+    path: /app/oracle/admin/maint
+    state: directory
+    recurse: yes
+    force: yes
+    owner: oracle
+    group: dba
+
+- name: create the folder's under /oraback
+  file:
+    path: "/oraback/{{ item }}"
+    state: directory
+    recurse: yes
+    force: yes
+    owner: oracle
+    group: dba
+  with_items:
+      - archive/{{ ORACLE_SID }}
+      - fast_recovery_area/{{ ORACLE_SID }}
+      - backup
+      - export
+      - rman
+
+- name: create a folder under oradata
+  file:
+    path: /oradata/{{ ORACLE_SID }}
+    state: directory
+    recurse: yes
+    force: yes
+    owner: oracle
+    group: dba
+
+- name: copy maint files to destination
+  template:
+    src: "{{item}}"
+    dest: /app/oracle/admin/maint
+    owner: oracle
+    group: dba
+    mode: 0755
+    backup: yes
+  with_items:
+      - backall.pl
+      - bouncedb.sh
+      - dbora
+      - delete_arch.sh
+      - dctm_export.sh
+      - filelist.sh
+      - hugepages_settings.sh
+      - mvlog.sh
+      - obackup.pl
+      - rman_archive_del_regsys.sh
+      - rman_archive_del.sh
+      - set_sid.sh
+      - SID_export.sh
+      - schemas_to_export.txt
+
+- name: copy cron file to /home/oracle
+  template:
+    src: "NEWDB_crontab"
+    dest: /home/oracle
+    backup: yes
+  register: cronjob
+
+- name: install cronjob
+  command: crontab -u oracle NEWDB_crontab
+  args:
+    chdir: /home/oracle
+
+- name: copy oracle-rdbms.service script to /etc/systemd/system
+  template:
+    src: "oracle-rdbms.service"
+    dest: /etc/systemd/system/oracle-rdbms.service
+    backup: yes
+    mode: 0664
+
+- name: copy oracle-agent.service script to /etc/system/system
+  template: 
+    src: "oracle-agent.service"
+    dest: /etc/systemd/system/oracle-agent.service
+    backup: yes
+    mode: 0664
+
+- name: enable services finally
+  service:
+    name: "{{item}}"
+    enabled: yes
+  with_items:
+     - "oracle-rdbms.service"
+     - "oracle-agent.service"

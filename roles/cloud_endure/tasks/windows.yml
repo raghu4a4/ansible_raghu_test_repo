@@ -1,0 +1,33 @@
+---
+- name: search if package is already installed
+  win_shell: Get-Package | select Name | select-string -pattern 'cloudendure'
+  register: package
+  ignore_errors: true
+
+- name: download the windows agent 
+  get_url:
+    url: https://console.cloudendure.com/installer_win.exe
+    dest: "{{stage_files_loc}}/installer_win.exe"
+    validate_certs: no
+    mode: 0750
+  delegate_to: localhost
+  when: "'cloudendure' not in package.stdout"
+
+- name: copy files to remote server
+  win_copy:
+    src: "{{stage_files_loc}}/installer_win.exe"
+    dest: 'C:\'
+  when: "'cloudendure' not in package.stdout"
+
+- name: Install windows agent
+  win_command: C:\installer_win.exe -t {{key}} --no-prompt
+  when: "'cloudendure' not in package.stdout"
+
+- pause:
+    seconds: 10
+
+- name: Remove files and folders finally
+  win_file:
+    path: C:\installer_win.exe
+    state: absent
+  when: "'cloudendure' not in package.stdout"

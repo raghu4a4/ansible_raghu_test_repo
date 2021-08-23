@@ -1,0 +1,34 @@
+=======================
+This report was run on:
+=======================
+{{ date }}
+
+
+========== Server Name ==========
+{{ inventory_hostname }}
+
+
+========== Oracle Home ==========
+{{ oracle_home.stdout }}
+
+
+
+{{ sql.stdout }}
+
+
+
+========== Listener Status ==========
+{{ start_time }}
+{{ version }}
+
+
+===== The listener is monitoring the database(s) and service(s) =====
+{{ service }}
+
+
+========== OEM Status ==========
+{{ oem.stdout }}
+
+
+========== OEM Targets Monitored ==========
+{{ oem_target.stdout }}

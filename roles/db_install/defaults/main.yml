@@ -1,0 +1,7 @@
+---
+common_shared_location: /net/bos1pfiler1/vol/bos1_nas_library/orastage/linux64/database
+#run_Installer: "{{ common_shared_location }}/{{ ORACLE_VER }}/database/runInstaller"
+#response_file: "{{ common_shared_location }}/{{ ORACLE_VER }}/database/response/db_install_VRTX.rsp"
+response_file: "db_install_VRTX_{{ORACLE_VER}}.rsp"
+oracle_19c_install_file: LINUX.X64_193000_db_home.zip
+oracle_install_file: "{{common_shared_location}}/{{ORACLE_VER}}/{{oracle_19c_install_file}}"

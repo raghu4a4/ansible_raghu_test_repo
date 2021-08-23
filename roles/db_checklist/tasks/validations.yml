@@ -1,0 +1,180 @@
+---
+- name: copy template for validation purpose only
+  template: 
+    src: "{{item}}"
+    dest: "{{ tmp_path }}"
+    backup: yes
+    owner: oracle
+    group: dba
+    mode: 0650
+  with_items:
+    - checklist1.sql
+    - checklist2.sql
+    - checklist3.sql
+
+- name: sql run1
+  shell: "{{exec_select}} -l oracle -c 'export ORACLE_SID={{ORACLE_SID|lower}} && export ORACLE_HOME={{only_home.stdout}} && sqlplus / as sysdba @{{ tmp_path }}/checklist1.sql'"
+  register: sql1
+
+- name: sql run2
+  shell: "{{exec_select}} -l oracle -c 'export ORACLE_SID={{ORACLE_SID|lower}} && export ORACLE_HOME={{only_home.stdout}} && sqlplus / as sysdba @{{ tmp_path }}/checklist2.sql'"
+  register: sql2
+
+- name: sql run3
+  shell: "{{exec_select}} -l oracle -c 'export ORACLE_SID={{ORACLE_SID|lower}} && export ORACLE_HOME={{only_home.stdout}} && sqlplus / as sysdba @{{ tmp_path }}/checklist3.sql'"
+  register: sql3
+
+- name: get version from install
+  set_fact:
+   temp_ver: "{{ sql1.stdout | regex_search(r1) }}"
+  vars:
+   r1: 'Enterprise Edition.*'
+
+- name: get exact version 
+  set_fact:
+   get_ins_ver: "{{ temp_ver | regex_replace(r2,'\\2') }}"
+  vars:
+   r2: '(Enterprise Edition)\sRelease\s(\d\d.\d)(.+)'
+
+- name: get version from /etc/oratab
+  set_fact:
+   temp_oratab: "{{ oracle_home.stdout | regex_search(r3) }}"
+  vars:
+   r3: '{{ORACLE_SID|lower}}.+'
+
+- name: now slice down version
+  set_fact:
+   ver_oratab: "{{ temp_oratab | regex_replace(r4,'\\3') }}"
+  vars:
+   r4: '(.+)(product/)(\d\d.\d)(.+)'
+
+- name: validate sql
+  set_fact: 
+   temp1: "{{sql2.stdout | regex_replace(p1,r1) | parse_tabular('(?P<NAME>\\S+)\\s+(?P<CREATED>\\S+)\\s+(?P<LOG_MODE>\\S+)\\s+(?P<OPEN_MODE>\\S+\\s+\\S+\\s+)\\s+(?P<DATABASE_ROLE>\\S+)') | to_nice_json }}"
+  vars:
+   p1: 'SQL*(.+)\nVersion(.+)\n\nCopyright(.+)\n\n\nConnected(.+)\nOracle(.+)\nVersion(.+)\n\n\n'
+   r1: ''
+
+- name: check for sql open_mode
+  set_fact:
+   sql_dbrole: "{{ temp1 | from_json | json_query(query1) }}"
+   sql_logmode: "{{ temp1 | from_json | json_query(query2) }}"
+  vars:
+   query1: "[?DATABASE_ROLE=='PRIMARY'].NAME"
+   query2: "[?LOG_MODE=='ARCHIVELOG'].NAME"
+
+- name: check for database name
+  set_fact:
+    get_db_name: "{{ sql3.stdout|lower | regex_search(r1) }}"
+  vars:
+    r1: "{{ORACLE_SID|lower}}"
+
+- set_fact:
+    oem_running: "{{ oem.stdout | regex_search(regex) }}"
+  vars:
+    regex: 'Agent is Running and Ready'
+
+- set_fact:
+    oem_target_host: "{{ oem_target.stdout | regex_search(regex1) }}"
+    oem_oracle_db: "{{ oem_target.stdout|lower | regex_search(regex2) }}"
+    oem_listener: "{{ oem_target.stdout | regex_search(regex3) }}"
+  vars:
+    regex1: '\w+.\w+.vrtx.com,\shost'
+    regex2: '{{ORACLE_SID|lower}}.+'
+#.\w+.vrtx.com,\soracle_database'
+    regex3: '\w+.\w+.vrtx.com,\soracle_listener'
+
+- name: get exact version
+  set_fact:
+#    get_version: "{{version | regex_replace('Version\\s(\\d\\d.\\d)(.+)','\\1') }}"
+    ora_ver: "{{ ORACLE_VER | regex_replace('(\\d\\d.\\d)(.+)','\\1') }}"
+
+
+###########################################################################################################################################################################################
+
+- name: Database Validations 
+  set_fact:
+    db_validations:
+    - step: 1st Validation
+      check_item: "validate oracle home with flag y"
+      pass_msg: "passed. oracle home validation with flag Y"
+      fail_msg: "failed. oracle home validation is not flag Y"
+      check_result: "{{ oracle_home.stdout[-1] == 'Y' }}"
+    - step: 2nd Validation
+      check_item: "validate sql_dbrole"
+      pass_msg: "passed. oracle sql_dbrole is PRIMARY"
+      fail_msg: "failed. oracle sql_dbrole is not PRIMARY"
+      check_result: "{{ sql_dbrole|length > 0 }}"
+    - step: 3rd Validation
+      check_item: "validate LOG_MODE"
+      pass_msg: "passed. oracle LOG_MODE is ARCHIVELOG"
+      fail_msg: "failed. oracle LOG_MODE is not ARCHIVELOG"
+      check_result: "{{ sql_logmode|length > 0 }}"
+    - step: 4th Validation
+      check_item: "Validate database name"
+      pass_msg: "passed. database name matched"
+      fail_msg: "failed. database name is not matched"
+      check_result: "{{ get_db_name|length > 0 }}"
+    - step: 5th Validation
+      check_item: "Validate version"
+      pass_msg: "passed. version matched"
+      fail_msg: "failed. version is not matched"
+      check_result: "{{ ora_ver == get_ins_ver and ora_ver == ver_oratab }}"
+    - step: 6th Validation
+      check_item: "Validate listener"
+      pass_msg: "passed. listener has start date"
+      fail_msg: "failed. listener does not have start date"
+      check_result: "{{ start_time is defined }}"
+    - step: 7th Validation
+      check_item: "Validate db monitored in Listener"
+      pass_msg: "passed. db monitored in Listener"
+      fail_msg: "failed. db is not monitored in Listener"
+      check_result: "{{ DB_NAME|lower in service|lower }}"
+    - step: 8th Validation
+      check_item: "Validate OEM Agent"
+      pass_msg: "passed. OEM Agent is Running"
+      fail_msg: "failed. OEM Agent is not Running"
+      check_result: "{{ oem_running == 'Agent is Running and Ready' }}"
+    - step: 9th Validation
+      check_item: "Validate hostname in OEM Targets Monitored"
+      pass_msg: "passed. hostname in OEM Targets Monitored"
+      fail_msg: "failed. hostname not in OEM Targets Monitored"
+      check_result: "{{ oem_target_host|length > 0 }}"
+    - step: 10th Validation
+      check_item: "Validate oracle database name in OEM Targets Monitored"
+      pass_msg: "passed. oracle database in OEM Targets Monitored"
+      fail_msg: "failed. oracle database not in OEM Targets Monitored"
+      check_result: "{{oem_oracle_db|length > 0 }}"
+    - step: 11th Validation
+      check_item: "Validate Listener in OEM Targets Monitored"
+      pass_msg: "passed. Listener in OEM Targets Monitored"
+      fail_msg: "failed. Listener not in OEM Targets Monitored"
+      check_result: "{{ oem_listener|length > 0 }}"
+    
+- name: Display passed validations
+  debug:
+    msg: "{{ db_validations | json_query(jq) }}"
+  vars:
+    jq: "[?check_result == `true`].{step: step, check_item: check_item, result: pass_msg}"       
+   
+- name: Display failed validations
+  debug:
+    msg: "{{ db_validations | json_query(jq)}}"
+  vars:
+    jq: "[?check_result==`false`].{step: step, check_item: check_item, result: fail_msg}"
+
+- name: validations Completed
+  debug:
+    msg: "is_good_to_proceed: {{(db_validations | json_query(jq) | length)==0}}"
+  vars:
+    jq: "[?check_result == `false`]"
+
+- name: call email playbook
+  include: send_email.yml
+  when: db_validations|json_query("[?check_result == `false`]")
+
+- name: fail if any validations are not passed
+  fail:
+    msg: when its not good to proceed
+  when: db_validations|json_query("[?check_result == `false`]")
+

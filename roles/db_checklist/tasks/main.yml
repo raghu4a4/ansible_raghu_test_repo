@@ -1,0 +1,67 @@
+---
+- name: set date
+  set_fact: date="{{lookup('pipe','date +%d-%b-%Y')}}"
+
+- name: find all oracle homes available
+  shell: grep '/app' /etc/oratab
+  changed_when: false
+  register: oracle_home
+
+- set_fact: 
+    tmp_path: /tmp/db_setup_install/db_checklist
+
+- name: Create temp directory to store all execution data
+  file: 
+    path: "{{ tmp_path }}"
+    state: directory
+    recurse: yes
+    owner: oracle
+    group: dba
+    mode: ug+rwx,o+rx,g+s
+
+- name: copy template to tmp location
+  template: 
+    src: "{{item}}"
+    dest: "{{ tmp_path }}"
+    backup: yes
+    owner: oracle
+    group: dba
+    mode: 0650
+  with_items:
+    - checklist.sql
+
+- name: "get the only ORACLE_HOME for the {{ORACLE_SID}}"
+  shell: grep -ir {{ORACLE_SID|lower}} /etc/oratab | cut -d':' -f2 | head -1 
+  register: only_home
+
+- set_fact:
+    exec_select: /usr/sbin/runuser
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int >= 7
+
+- set_fact:
+    exec_select: /sbin/runuser
+  when: hostvars[inventory_hostname].ansible_distribution_major_version|int <= 6
+
+- name: For new OS types
+  include: linux.yml
+
+- name: include database validations on checklist
+  include: validations.yml
+
+- name: Create a template for final results and generate checklist
+  template:
+    src: checklist_template.txt
+    dest: "{{ item }}/{{ inventory_hostname }}-{{ ORACLE_SID }}_{{ date }}.txt"
+    backup: yes
+    owner: oracle
+    group: dba
+    mode: 0650
+  ignore_errors: true
+  with_items:
+   - "{{tmp_path}}"
+   - /net/bos1pfiler1/vol/bos1_nas_library/orastage/Checklists
+
+- fetch:
+   src: "{{tmp_path}}/{{inventory_hostname}}-{{ORACLE_SID}}_{{date}}.txt"
+   dest: "{{checklist_folder}}/{{inventory_hostname}}_{{ORACLE_SID}}.{{DB_LOCATION}}.vrtx.com.txt"
+   flat: yes

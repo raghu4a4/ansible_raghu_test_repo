@@ -1,0 +1,18 @@
+---
+- name: start oracle-agent.service
+  service: name=oracle-agent.service state=started
+  
+- name: stop oracle-agent.service
+  service: name=oracle-agent.service state=stopped
+
+- name: restart oracle-agent.service
+  service: name=oracle-agent.service state=restarted
+
+- name: start oracle-rdbms.service
+  service: name=oracle-rdbms.service state=started
+
+- name: stop oracle-rdbms.service 
+  service: name=oracle-rdbms.service state=stopped
+
+- name: restart oracle-rdbms.service
+  service: name=oracle-rdbms.service state=restarted

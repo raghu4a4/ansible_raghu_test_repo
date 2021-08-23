@@ -1,0 +1,44 @@
+---
+- name: add to empty host group
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: add to host group
+      add_host:
+        hostname: "{{hostname}}"
+        group: db_host
+        ansible_user: iacservice
+        ansible_connection: ssh
+        ansible_ssh_pass: "{{ iacservice_ssh_pass }}"
+      when: hostname[-3] == "l"
+      tags: always
+      no_log: true
+
+#################################################################################################################
+
+- name: Role to setup Oracle Profile, Maintainace Scripts, Crontab and auto start/stop scripts in oracle
+  hosts: db_host
+  become: true
+  become_user: root
+  become_method: dzdo
+  vars:
+    ORACLE_SID: 
+    ORACLE_BASE: /app/oracle
+    ORACLE_VER:
+    DB_NAME:
+  roles:
+    # Role to setup Oracle Profile, Maintainace Scripts, Crontab and auto start/stop scripts in oracle
+    - role: db_setup
+      tmp_files: "{{template_files}}/db_setup_templates"
+      tags: setup
+    # Performs installation on the Remote Server
+    - role: db_install
+      tmp_files: "{{template_files}}/db_install_templates"
+      tags: install
+    # Creates the databases
+    - role: db_create
+      tmp_files: "{{template_files}}/db_create_templates"
+      tags: create
+    # Creates the checklists for database team for validations and perform checklist validations through ansible and trigger email for failures
+    - role: db_checklist
+      tags: checklist

@@ -1,0 +1,25 @@
+---
+- name: Create oracle directory
+  file: 
+    path: "{{oracle_dir}}"
+    state: directory
+    recurse: yes
+    owner: oracle
+    group: dba
+    mode: 0755
+
+- name: copy the software file to location
+  copy:
+    src: "{{oracle_install_file}}"
+    dest: "{{oracle_dir}}"
+    remote_src: yes
+    owner: oracle
+    group: dba
+
+- name: unarchive file on remote machine 
+  unarchive:
+    src: "{{oracle_dir}}/{{oracle_19c_install_file}}"
+    dest: "{{oracle_dir}}"
+    remote_src: yes
+    owner: oracle
+    group: dba

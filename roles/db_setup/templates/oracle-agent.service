@@ -1,0 +1,17 @@
+# /etc/systemd/system/oracle-rdbms.service
+#   Invoking Oracle scripts to start/shutdown Instances defined in /etc/oratab
+#   and starts Listener
+
+[Unit]
+Description=Oracle Enterprise Manager Agent
+After=centrifydc.service
+
+[Service]
+Type=forking
+Restart=no
+ExecStart=/app/oracle/product/agent13c/agent_inst/bin/emctl start agent
+ExecStop=/app/oracle/product/agent13c/agent_inst/bin/emctl stop agent
+User=oracle
+
+[Install]
+WantedBy=multi-user.target

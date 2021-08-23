@@ -1,0 +1,20 @@
+---
+- debug: var=hostvars[inventory_hostname].ansible_distribution
+
+- name: call linux installation for {{dr_type}}
+  include: linux.yml
+  when: 
+    - '"RedHat" in  hostvars[inventory_hostname].ansible_distribution'
+    - dr_type == "SunGard-Managed-CRT"    
+
+- name: call windows installation for {{dr_type}}
+  include: windows.yml
+  when: 
+   - '"Microsoft Windows" in  hostvars[inventory_hostname].ansible_distribution'
+   - dr_type == "SunGard-Managed-CRT"
+
+#################### Send Email Notification ###########################
+
+- name: send email 
+  include: send_email.yml
+  when: dr_type == "SunGard-Managed-CRT"

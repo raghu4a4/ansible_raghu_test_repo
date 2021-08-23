@@ -1,0 +1,10 @@
+---
+- name: send mail after cloud endure agent installation
+  mail:
+    host: localhost
+    from: "{{server_admins_group}}"
+    to: "{{sunguard_to_list}}"
+    cc: "{{sunguard_cc_list}}"
+    subject: "CloudEndure agent install on {{hostname}}"
+    body: "Hi SunGuard Team,\n\nWe installed the cloudendure agent on {{hostname}}.  Can you verify if it is replicating properly?\n\nThanks,\nDTE Server Team"
+  delegate_to: localhost
